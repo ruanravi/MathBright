@@ -320,11 +320,11 @@ export default function App() {
             </div>
             
             {/* Frame do Jogo Ajustado */}
-            <iframe
-              src="/jogo_matematica.html"
-              title="MathBridge Arcade Game"
-              className="w-full h-[730px] rounded-lg border border-slate-700 bg-[#0f172a]"
-            />
+          <iframe
+            src={`${import.meta.env.BASE_URL}jogo_matematica.html`}
+            title="MathBridge Arcade Game"
+            className="w-full h-[730px] rounded-lg border border-slate-700 bg-[#0f172a]"
+          />
           </div>
         </div>
       )}
