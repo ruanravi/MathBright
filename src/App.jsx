@@ -11,6 +11,8 @@ export default function App() {
     return xpSalvo ? JSON.parse(xpSalvo) : 0;
   });
 
+  // Modal do Jogo Arcade
+  const [exibirJogoArcade, setExibirJogoArcade] = useState(false);
   const [dificuldade, setDificuldade] = useState('Fácil');
   const [questao, setQuestao] = useState(null);
   const [respostaUsuario, setRespostaUsuario] = useState('');
@@ -253,6 +255,14 @@ export default function App() {
           </div>
         )}
 
+        {/* Botão para abrir o Minigame Arcade */}
+        <button
+          onClick={() => setExibirJogoArcade(true)}
+          className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 rounded-lg text-xs font-semibold transition mb-3"
+        >
+          🎮 Jogar Modo Arcade (Digitação & Ação)
+        </button>
+
         {/* Acesso ao Diagnóstico do Professor */}
         <button
           onClick={() => setExibirPainelProfessor(true)}
@@ -287,6 +297,34 @@ export default function App() {
             >
               Fechar
             </button>
+          </div>
+        </div>
+      )}
+
+          {/* Modal do Jogo Arcade (HTML em iframe) */}
+      {exibirJogoArcade && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 z-50 overflow-y-auto">
+          <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 max-w-md w-full my-auto flex flex-col items-center shadow-2xl">
+            
+            {/* Cabeçalho do Modal */}
+            <div className="flex justify-between items-center w-full mb-3">
+              <h3 className="text-sm font-bold text-indigo-400 flex items-center gap-2">
+                🎮 MathBridge - Modo Arcade
+              </h3>
+              <button
+                onClick={() => setExibirJogoArcade(false)}
+                className="bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 border border-rose-500/30 text-xs px-3 py-1 rounded-lg transition"
+              >
+                Fechar
+              </button>
+            </div>
+            
+            {/* Frame do Jogo Ajustado */}
+            <iframe
+              src="/jogo_matematica.html"
+              title="MathBridge Arcade Game"
+              className="w-full h-[730px] rounded-lg border border-slate-700 bg-[#0f172a]"
+            />
           </div>
         </div>
       )}
@@ -356,7 +394,10 @@ export default function App() {
             </div>
           </div>
         </div>
+
+        
       )}
+
     </div>
   );
 }
