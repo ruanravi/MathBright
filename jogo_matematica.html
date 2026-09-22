@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>MathBridge - Arcade com Sprites</title>
+    <style>
+    body {
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
+        min-height: 100vh;
+        background-color: #0f172a;
+        margin: 0;
+        padding: 12px 0;
+        box-sizing: border-box;
+        font-family: 'Courier New', Courier, monospace;
+        color: white;
+        flex-direction: column;
+    }
+    #ui-bar {
+        width: 400px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        font-family: 'Arial', sans-serif;
+    }
+    .xp-text { font-size: 16px; font-weight: bold; color: #10b981; }
+    .btn-painel {
+        background-color: #475569; color: white; border: none;
+        padding: 6px 10px; border-radius: 5px; cursor: pointer;
+        font-weight: bold; transition: 0.2s; font-size: 13px;
+    }
+    .btn-painel:hover { background-color: #334155; }
+
+    canvas {
+        background-color: #1e293b; border: 4px solid #475569;
+        border-radius: 10px; box-shadow: 0px 10px 40px rgba(0,0,0,0.8);
+    }
+    p {
+        margin-top: 10px;
+        margin-bottom: 0;
+        color: #94a3b8;
+        font-family: 'Arial', sans-serif;
+        font-size: 13px;
+        text-align: center;
+    }
+
+    #modal-professor {
+        display: none; position: fixed; top: 50%; left: 50%;
+        transform: translate(-50%, -50%); width: 320px;
+        background-color: white; color: #1e293b; font-family: 'Arial', sans-serif;
+        padding: 20px; border-radius: 10px; box-shadow: 0 0 50px rgba(0,0,0,0.8);
+        z-index: 100;
+    }
+    #modal-professor h2 { margin-top: 0; font-size: 18px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
+    .stat-line { margin: 8px 0; font-size: 14px; }
+    .btn-fechar {
+        background-color: #ef4444; color: white; border: none; width: 100%;
+        padding: 8px; border-radius: 5px; margin-top: 12px; cursor: pointer; font-weight: bold;
+    }
+</style>
+</head>
+<body>
+
+    <div id="ui-bar">
+        <div class="xp-text">⭐ XP Total: <span id="xpDisplay">0</span></div>
+        <button class="btn-painel" onclick="abrirPainel()">📊 Painel do Professor</button>
+    </div>
+
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+    <p><b>FASE 1:</b> Digite a fórmula | <b>FASE 2:</b> Use as Setas ⬅️ ➡️ para mover</p>
+
+    <div id="modal-professor">
+        <h2>📊 Diagnóstico Pedagógico</h2>
+        <div class="stat-line">📝 Total Respondidas: <b id="statTotal">0</b></div>
+        <div class="stat-line" style="color: #16a34a;">✅ Acertos: <b id="statAcertos">0</b></div>
+        <div class="stat-line" style="color: #dc2626;">❌ Erros: <b id="statErros">0</b></div>
+        <div class="stat-line">📈 Aproveitamento: <b id="statTaxa">0%</b></div>
+        <button class="btn-fechar" onclick="fecharPainel()">Fechar Diagnóstico</button>
+    </div>
+
+    <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let xpTotal = 0;
+    let estatisticas = { total_respondidas: 0, total_acertos: 0, total_erros: 0 };
+
+    const bancoQuestoes = [
+        { formula: "2x+4=10", resposta: 3, bolhas: [3, 6, 4] },
+        { formula: "3x-5=10", resposta: 5, bolhas: [2, 5, 8] },
+        { formula: "x/2=4",   resposta: 8, bolhas: [8, 6, 2] },
+        { formula: "5x=25",   resposta: 5, bolhas: [10, 5, 20] },
+        { formula: "4x-2=14", resposta: 4, bolhas: [2, 4, 6] }
+    ];
+
+    let estadoJogo = 0; 
+    let mensagemFim = "";
+    let caracteresDigitados = 0;
+    
+    let questaoAtual, formulaOculta, respostaCerta;
+    let jogador = { x: 170, y: 500, largura: 60, altura: 50, velocidade: 9, movEsquerda: false, movDireita: false };
+    let bolhas = [];
+    let particulas = []; // Efeito de explosão de partículas
+
+    function gerarNovoDesafio() {
+        questaoAtual = bancoQuestoes[Math.floor(Math.random() * bancoQuestoes.length)];
+        formulaOculta = questaoAtual.formula;
+        respostaCerta = questaoAtual.resposta;
+        caracteresDigitados = 0;
+        jogador.x = 170;
+        
+        bolhas = [
+            { x: 80,  y: -50, valor: questaoAtual.bolhas[0], raio: 32, velocidade: 4.5 },
+            { x: 200, y: -50, valor: questaoAtual.bolhas[1], raio: 32, velocidade: 4.5 },
+            { x: 320, y: -50, valor: questaoAtual.bolhas[2], raio: 32, velocidade: 4.5 }
+        ];
+        
+        estadoJogo = 0;
+    }
+
+    // --- EFEITO DE PARTÍCULAS ---
+    function criarExplosao(x, y, cor) {
+        for (let i = 0; i < 18; i++) {
+            particulas.push({
+                x: x,
+                y: y,
+                vx: (Math.random() - 0.5) * 10,
+                vy: (Math.random() - 0.5) * 10,
+                raio: Math.random() * 4 + 2,
+                cor: cor,
+                vida: 1.0
+            });
+        }
+    }
+
+    function atualizarParticulas() {
+        for (let i = particulas.length - 1; i >= 0; i--) {
+            let p = particulas[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vida -= 0.04;
+            if (p.vida <= 0) particulas.splice(i, 1);
+        }
+    }
+
+    function desenharParticulas() {
+        particulas.forEach(p => {
+            ctx.save();
+            ctx.globalAlpha = p.vida;
+            ctx.fillStyle = p.cor;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.raio, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        });
+    }
+
+    window.addEventListener("keydown", (e) => {
+        if (estadoJogo === 0 && document.getElementById("modal-professor").style.display !== "block") {
+            let teclaPressionada = e.key.toLowerCase();
+            if (e.key === "/") teclaPressionada = "/"; 
+            
+            if (teclaPressionada === formulaOculta[caracteresDigitados].toLowerCase()) {
+                caracteresDigitados++;
+                if (caracteresDigitados === formulaOculta.length) estadoJogo = 1;
+            }
+        } else if (estadoJogo === 1) {
+            if (e.key === "ArrowLeft" || e.key === "a") jogador.movEsquerda = true;
+            if (e.key === "ArrowRight" || e.key === "d") jogador.movDireita = true;
+        }
+    });
+
+    window.addEventListener("keyup", (e) => {
+        if (estadoJogo === 1) {
+            if (e.key === "ArrowLeft" || e.key === "a") jogador.movEsquerda = false;
+            if (e.key === "ArrowRight" || e.key === "d") jogador.movDireita = false;
+        }
+    });
+
+    function atualizar() {
+        atualizarParticulas();
+        if (estadoJogo !== 1) return;
+
+        if (jogador.movEsquerda && jogador.x > 0) jogador.x -= jogador.velocidade;
+        if (jogador.movDireita && jogador.x + jogador.largura < canvas.width) jogador.x += jogador.velocidade;
+
+        bolhas.forEach(bolha => {
+            bolha.y += bolha.velocidade;
+            
+            if (bolha.y + bolha.raio > jogador.y && bolha.x > jogador.x && bolha.x < jogador.x + jogador.largura) {
+                const acertou = (bolha.valor === respostaCerta);
+                criarExplosao(bolha.x, bolha.y, acertou ? "#10b981" : "#ef4444");
+                processarResultado(acertou);
+            }
+            
+            if (bolha.y - bolha.raio > canvas.height) {
+                processarResultado(false, true);
+            }
+        });
+    }
+
+    function processarResultado(acertou, caiu = false) {
+        estadoJogo = 2;
+        estatisticas.total_respondidas++;
+
+        if (acertou) {
+            xpTotal += 20;
+            estatisticas.total_acertos++;
+            mensagemFim = "🎉 ACERTOU! +20 XP";
+            document.getElementById("xpDisplay").innerText = xpTotal;
+        } else {
+            estatisticas.total_erros++;
+            mensagemFim = caiu ? "⚠️ Caiu! O certo era " + respostaCerta : "❌ ERROU! O certo era " + respostaCerta;
+        }
+
+        atualizarDadosPainel();
+
+        setTimeout(() => {
+            gerarNovoDesafio();
+        }, 2000);
+    }
+
+    function abrirPainel() { document.getElementById("modal-professor").style.display = "block"; }
+    function fecharPainel() { document.getElementById("modal-professor").style.display = "none"; }
+    
+    function atualizarDadosPainel() {
+        document.getElementById("statTotal").innerText = estatisticas.total_respondidas;
+        document.getElementById("statAcertos").innerText = estatisticas.total_acertos;
+        document.getElementById("statErros").innerText = estatisticas.total_erros;
+        
+        let taxa = estatisticas.total_respondidas > 0 
+            ? (estatisticas.total_acertos / estatisticas.total_respondidas) * 100 
+            : 0;
+        document.getElementById("statTaxa").innerText = taxa.toFixed(1) + "%";
+    }
+
+    // --- DESENHO NATIVO PROCEDURAL (SEM IMAGENS EXTERNAS) ---
+    function desenharNaveEspacial(x, y, w, h) {
+        ctx.save();
+        ctx.shadowColor = "#818cf8";
+        ctx.shadowBlur = 15;
+
+        // Fogo do Propulsor (Animação dinâmica ao mover)
+        if (jogador.movEsquerda || jogador.movDireita) {
+            ctx.fillStyle = Math.random() > 0.5 ? "#f97316" : "#eab308";
+            ctx.beginPath();
+            ctx.moveTo(x + w * 0.3, y + h);
+            ctx.lineTo(x + w * 0.5, y + h + 14 + Math.random() * 8);
+            ctx.lineTo(x + w * 0.7, y + h);
+            ctx.fill();
+        }
+
+        // Corpo Principal da Nave
+        let grad = ctx.createLinearGradient(x, y, x, y + h);
+        grad.addColorStop(0, '#818cf8');
+        grad.addColorStop(1, '#3730a3');
+        ctx.fillStyle = grad;
+
+        ctx.beginPath();
+        ctx.moveTo(x + w / 2, y); // Ponta
+        ctx.lineTo(x + w, y + h * 0.85);
+        ctx.lineTo(x + w * 0.75, y + h);
+        ctx.lineTo(x + w * 0.25, y + h);
+        ctx.lineTo(x, y + h * 0.85);
+        ctx.closePath();
+        ctx.fill();
+
+        // Visor / Luz Neon Central
+        ctx.fillStyle = "#38bdf8";
+        ctx.beginPath();
+        ctx.arc(x + w / 2, y + h * 0.45, 7, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+    }
+
+    function desenharOrbeEnergia(bolha) {
+        ctx.save();
+        ctx.shadowColor = "#38bdf8";
+        ctx.shadowBlur = 12;
+
+        // Gradiente Radial 3D para o Orbe
+        let grad = ctx.createRadialGradient(
+            bolha.x - bolha.raio * 0.3, bolha.y - bolha.raio * 0.3, bolha.raio * 0.1,
+            bolha.x, bolha.y, bolha.raio
+        );
+        grad.addColorStop(0, '#7dd3fc');
+        grad.addColorStop(0.6, '#0284c7');
+        grad.addColorStop(1, '#0369a1');
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(bolha.x, bolha.y, bolha.raio, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Ponto de Brilho / Reflexo
+        ctx.fillStyle = "rgba(255, 255, 255, 0.65)";
+        ctx.beginPath();
+        ctx.arc(bolha.x - bolha.raio * 0.35, bolha.y - bolha.raio * 0.35, bolha.raio * 0.22, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Texto com o Valor
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 22px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(bolha.valor, bolha.x, bolha.y);
+
+        ctx.restore();
+    }
+
+    function desenhar() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if (estadoJogo === 0) {
+            ctx.fillStyle = "#94a3b8"; ctx.font = "16px Courier New"; ctx.textAlign = "center";
+            ctx.fillText("FASE 1: DIGITE A FÓRMULA", canvas.width / 2, 190);
+            
+            ctx.font = "bold 38px Courier New";
+            let txtDig = formulaOculta.substring(0, caracteresDigitados);
+            let txtRest = formulaOculta.substring(caracteresDigitados);
+            let iniX = (canvas.width - ctx.measureText(formulaOculta).width) / 2;
+            
+            ctx.textAlign = "left";
+            ctx.fillStyle = "#10b981"; ctx.fillText(txtDig, iniX, 250);
+            let largDig = ctx.measureText(txtDig).width;
+            ctx.fillStyle = "#475569"; ctx.fillText(txtRest, iniX + largDig, 250);
+
+        } else if (estadoJogo >= 1) {
+            // Faixa da Fórmula
+            ctx.fillStyle = "#1e293b"; ctx.fillRect(0, 410, canvas.width, 70);
+            ctx.fillStyle = "#10b981"; ctx.font = "bold 32px Courier New"; ctx.textAlign = "center";
+            ctx.fillText(formulaOculta, canvas.width / 2, 455);
+
+            // Desenhar Jogador (Nave Procedural)
+            desenharNaveEspacial(jogador.x, jogador.y, jogador.largura, jogador.altura);
+
+            // Desenhar Bolhas (Orbes de Energia)
+            bolhas.forEach(bolha => desenharOrbeEnergia(bolha));
+        }
+
+        // Desenhar Efeitos de Partículas
+        desenharParticulas();
+
+        if (estadoJogo === 2) {
+            ctx.fillStyle = "rgba(15, 23, 42, 0.85)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "white"; ctx.font = "bold 24px Arial"; ctx.textAlign = "center";
+            ctx.fillText(mensagemFim, canvas.width / 2, canvas.height / 2);
+        }
+    }
+
+    function loop() { atualizar(); desenhar(); requestAnimationFrame(loop); }
+    
+    gerarNovoDesafio();
+    loop();
+</script>
+
+</body>
+</html>
