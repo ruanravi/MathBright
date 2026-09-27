@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MathBridge - Porcentagem</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0f172a; color: #f8fafc; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+    #game-container { position: relative; width: 380px; height: 600px; background: #1e293b; border-radius: 12px; border: 2px solid #334155; display: flex; flex-direction: column; align-items: center; overflow: hidden; }
+    header { width: 100%; padding: 12px; background: #0f172a; text-align: center; border-bottom: 1px solid #334155; }
+    h2 { font-size: 14px; color: #f59e0b; text-transform: uppercase; letter-spacing: 1px; }
+    .hud { display: flex; justify-content: space-between; width: 100%; padding: 8px 16px; font-size: 12px; font-weight: bold; color: #94a3b8; }
+    #question-card { width: 90%; background: #0f172a; border: 1px solid #f59e0b; border-radius: 8px; padding: 12px; text-align: center; margin-top: 10px; z-index: 10; }
+    .formula { font-family: sans-serif; font-size: 15px; color: #fbbf24; margin-bottom: 8px; font-weight: bold; }
+    .input-box { display: flex; gap: 6px; justify-content: center; }
+    input { width: 100px; padding: 6px; border-radius: 6px; border: 1px solid #475569; background: #1e293b; color: white; text-align: center; font-size: 14px; outline: none; }
+    button { padding: 6px 12px; background: #f59e0b; border: none; border-radius: 6px; color: white; font-weight: bold; cursor: pointer; font-size: 12px; }
+    button:hover { background: #d97706; }
+    canvas { position: absolute; top: 0; left: 0; width: 380px; height: 600px; z-index: 1; }
+    #feedback { font-size: 12px; font-weight: bold; margin-top: 6px; height: 16px; }
+  </style>
+</head>
+<body>
+
+<div id="game-container">
+  <header>
+    <h2>Percent Charge (Escudo de Energia)</h2>
+  </header>
+  
+  <div class="hud">
+    <span>XP: <strong id="xp-val" style="color:#f59e0b;">0</strong></span>
+    <span>Fase: <strong id="fase-txt" style="color:#38bdf8;">1: Taxa Decimal</strong></span>
+  </div>
+
+  <div id="question-card">
+    <div class="formula" id="eq-display">20% de 150</div>
+    <p id="instrucao" style="font-size: 11px; color: #94a3b8; margin-bottom: 8px;">Escreve a taxa em formato decimal (ex: 0.20):</p>
+    <div class="input-box">
+      <input type="number" step="0.01" id="resposta-input" placeholder="Decimal..." />
+      <button id="btn-validar">Carregar</button>
+    </div>
+    <div id="feedback"></div>
+  </div>
+
+  <canvas id="arcadeCanvas" width="380" height="600"></canvas>
+</div>
+
+<script>
+  const canvas = document.getElementById('arcadeCanvas');
+  const ctx = canvas.getContext('2d');
+
+  let xp = 0;
+  let fase = 1;
+  let questaoAtual = {};
+  let orbeCapturadoOuPerdido = false;
+
+  const perguntas = [
+    { texto: "20% de 150", decimal: 0.20, resultadoFinal: 30 },
+    { texto: "50% de 80", decimal: 0.50, resultadoFinal: 40 },
+    { texto: "15% de 200", decimal: 0.15, resultadoFinal: 30 }
+  ];
+
+  document.getElementById('resposta-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      document.getElementById('btn-validar').click();
+    }
+  });
+
+  function gerardesafio() {
+    questaoAtual = perguntas[Math.floor(Math.random() * perguntas.length)];
+    document.getElementById('eq-display').innerText = questaoAtual.texto;
+    document.getElementById('instrucao').innerText = "Escreve a taxa em formato decimal (ex: 20% = 0.20):";
+    document.getElementById('resposta-input').value = '';
+    document.getElementById('resposta-input').disabled = false;
+    document.getElementById('btn-validar').style.display = 'inline-block';
+    document.getElementById('feedback').innerText = '';
+    fase = 1;
+    document.getElementById('fase-txt').innerText = "1: Taxa Decimal";
+    orbeCapturadoOuPerdido = false;
+  }
+
+  let playerX = 170;
+  let orbes = [];
+  let teclas = {};
+
+  window.addEventListener('keydown', e => teclas[e.key] = true);
+  window.addEventListener('keyup', e => teclas[e.key] = false);
+
+  document.getElementById('btn-validar').addEventListener('click', () => {
+    const val = parseFloat(document.getElementById('resposta-input').value);
+    if (Math.abs(val - questaoAtual.decimal) < 0.01) {
+      document.getElementById('feedback').style.color = '#4ade80';
+      document.getElementById('feedback').innerText = "Taxa ativada! Coleta a carga de valor real!";
+      fase = 2;
+      document.getElementById('fase-txt').innerText = "2: Absorver Valor";
+      document.getElementById('resposta-input').disabled = true;
+      document.getElementById('btn-validar').style.display = 'none';
+
+      orbes = [
+        { x: 80, y: 180, valor: questaoAtual.resultadoFinal, correta: true },
+        { x: 200, y: 180, valor: questaoAtual.resultadoFinal + 15, correta: false },
+        { x: 300, y: 180, valor: questaoAtual.resultadoFinal - 10, correta: false }
+      ].sort(() => Math.random() - 0.5);
+    } else {
+      document.getElementById('feedback').style.color = '#f87171';
+      document.getElementById('feedback').innerText = "Valor decimal incorreto! Tenta novamente.";
+    }
+  });
+
+  function loop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (fase === 2) {
+      if (teclas['ArrowLeft'] && playerX > 20) playerX -= 5;
+      if (teclas['ArrowRight'] && playerX < 340) playerX += 5;
+
+      // Desenhar Escudo de Energia
+      ctx.fillStyle = '#f59e0b';
+      ctx.beginPath();
+      ctx.arc(playerX + 20, 530, 25, 0, Math.PI, true);
+      ctx.fill();
+
+      // Orbes caindo
+      orbes.forEach(orbe => {
+        orbe.y += 1.2;
+        ctx.fillStyle = '#fbbf24';
+        ctx.beginPath();
+        ctx.arc(orbe.x, orbe.y, 18, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${orbe.valor}`, orbe.x, orbe.y + 4);
+
+        // Colisão com a nave
+        if (orbe.y >= 500 && Math.abs(orbe.x - (playerX + 20)) < 30) {
+          if (!orbeCapturadoOuPerdido) {
+            orbeCapturadoOuPerdido = true;
+            if (orbe.correta) {
+              xp += 15;
+              document.getElementById('xp-val').innerText = xp;
+              alert("Excelente! Escudo carregado com 100% de sucesso! (+15 XP)");
+            } else {
+              alert("Carga incorreta! Tenta o próximo desafio.");
+            }
+            gerardesafio();
+          }
+        }
+
+        // Queda fora da tela
+        if (orbe.y > canvas.height + 20) {
+          if (!orbeCapturadoOuPerdido) {
+            orbeCapturadoOuPerdido = true;
+            alert("Os orbes caíram! Tenta o próximo desafio.");
+            gerardesafio();
+          }
+        }
+      });
+    }
+
+    requestAnimationFrame(loop);
+  }
+
+  gerardesafio();
+  loop();
+</script>
+</body>
+</html>

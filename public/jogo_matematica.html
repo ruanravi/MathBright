@@ -180,26 +180,31 @@
     });
 
     function atualizar() {
-        atualizarParticulas();
-        if (estadoJogo !== 1) return;
+    atualizarParticulas();
+    if (estadoJogo !== 1) return; // Impede execuções duplicadas
 
-        if (jogador.movEsquerda && jogador.x > 0) jogador.x -= jogador.velocidade;
-        if (jogador.movDireita && jogador.x + jogador.largura < canvas.width) jogador.x += jogador.velocidade;
+    if (jogador.movEsquerda && jogador.x > 0) jogador.x -= jogador.velocidade;
+    if (jogador.movDireita && jogador.x + jogador.largura < canvas.width) jogador.x += jogador.velocidade;
 
-        bolhas.forEach(bolha => {
-            bolha.y += bolha.velocidade;
-            
-            if (bolha.y + bolha.raio > jogador.y && bolha.x > jogador.x && bolha.x < jogador.x + jogador.largura) {
-                const acertou = (bolha.valor === respostaCerta);
-                criarExplosao(bolha.x, bolha.y, acertou ? "#10b981" : "#ef4444");
-                processarResultado(acertou);
-            }
-            
-            if (bolha.y - bolha.raio > canvas.height) {
-                processarResultado(false, true);
-            }
-        });
+    for (let i = 0; i < bolhas.length; i++) {
+        let bolha = bolhas[i];
+        bolha.y += bolha.velocidade;
+        
+        // Colisão com a nave
+        if (bolha.y + bolha.raio > jogador.y && bolha.x > jogador.x && bolha.x < jogador.x + jogador.largura) {
+            const acertou = (bolha.valor === respostaCerta);
+            criarExplosao(bolha.x, bolha.y, acertou ? "#10b981" : "#ef4444");
+            processarResultado(acertou);
+            break; // Interrompe para não testar outras bolhas no mesmo fotograma
+        }
+        
+        // Se a bolha cair no fundo
+        if (bolha.y - bolha.raio > canvas.height) {
+            processarResultado(false, true);
+            break; // Interrompe para registrar apenas 1 erro
+        }
     }
+}
 
     function processarResultado(acertou, caiu = false) {
         estadoJogo = 2;

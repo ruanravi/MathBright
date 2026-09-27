@@ -11,8 +11,10 @@ export default function App() {
     return xpSalvo ? JSON.parse(xpSalvo) : 0;
   });
 
-  // Modal do Jogo Arcade
+  // Modal do Jogo Arcade e Seletor de Minigame
   const [exibirJogoArcade, setExibirJogoArcade] = useState(false);
+  const [operacaoArcade, setOperacaoArcade] = useState('equacao'); // 'equacao', 'quadratica', 'porcentagem'
+  
   const [dificuldade, setDificuldade] = useState('Fácil');
   const [questao, setQuestao] = useState(null);
   const [respostaUsuario, setRespostaUsuario] = useState('');
@@ -80,7 +82,6 @@ export default function App() {
     }));
 
     if (acertou) {
-      // Dispara a animação de confetes no acerto
       confetti({
         particleCount: 90,
         spread: 60,
@@ -119,7 +120,6 @@ export default function App() {
     }
   };
 
-  // Dados formatados para o gráfico do Recharts
   const dadosGraficoErros = [
     { nome: 'Eq. 1º Grau', erros: stats.errosPorTema.equacao_1grau, cor: '#60a5fa' },
     { nome: 'Função Quad.', erros: stats.errosPorTema.funcao_quadratica, cor: '#c084fc' },
@@ -129,6 +129,14 @@ export default function App() {
   const taxaAproveitamento = stats.totalRespondidas > 0 
     ? ((stats.acertos / stats.totalRespondidas) * 100).toFixed(1)
     : '0.0';
+
+  // Define qual arquivo HTML carregar no iframe
+  const obterFicheiroJogo = () => {
+    if (operacaoArcade === 'equacao') return 'jogo_matematica.html';
+    if (operacaoArcade === 'quadratica') return 'jogo_quadratica.html';
+    if (operacaoArcade === 'porcentagem') return 'jogo_porcentagem.html';
+    return 'jogo_matematica.html';
+  };
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 font-sans p-4 flex flex-col items-center">
@@ -237,7 +245,6 @@ export default function App() {
               </div>
             </form>
 
-            {/* Feedback Visual */}
             {mensagemStatus && (
               <div className={`mt-4 p-3 rounded-lg text-xs flex items-center gap-2 ${
                 mensagemStatus.tipo === 'sucesso' 
@@ -301,7 +308,7 @@ export default function App() {
         </div>
       )}
 
-          {/* Modal do Jogo Arcade (HTML em iframe) */}
+      {/* Modal do Jogo Arcade (HTML em iframe) */}
       {exibirJogoArcade && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 z-50 overflow-y-auto">
           <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 max-w-md w-full my-auto flex flex-col items-center shadow-2xl">
@@ -318,13 +325,47 @@ export default function App() {
                 Fechar
               </button>
             </div>
+
+            {/* Seletor de Minigames no Modal */}
+            <div className="flex gap-1.5 w-full mb-3 bg-slate-900/80 p-1 rounded-lg border border-slate-700">
+              <button
+                onClick={() => setOperacaoArcade('equacao')}
+                className={`flex-1 py-1.5 text-[11px] font-semibold rounded-md transition ${
+                  operacaoArcade === 'equacao'
+                    ? 'bg-indigo-600 text-white shadow'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                1º Grau
+              </button>
+              <button
+                onClick={() => setOperacaoArcade('quadratica')}
+                className={`flex-1 py-1.5 text-[11px] font-semibold rounded-md transition ${
+                  operacaoArcade === 'quadratica'
+                    ? 'bg-indigo-600 text-white shadow'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                Quadrática
+              </button>
+              <button
+                onClick={() => setOperacaoArcade('porcentagem')}
+                className={`flex-1 py-1.5 text-[11px] font-semibold rounded-md transition ${
+                  operacaoArcade === 'porcentagem'
+                    ? 'bg-indigo-600 text-white shadow'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                Porcentagem
+              </button>
+            </div>
             
-            {/* Frame do Jogo Ajustado */}
-          <iframe
-            src={`${import.meta.env.BASE_URL}jogo_matematica.html`}
-            title="MathBridge Arcade Game"
-            className="w-full h-[730px] rounded-lg border border-slate-700 bg-[#0f172a]"
-          />
+            {/* Frame do Jogo Dinâmico */}
+            <iframe
+              src={`${import.meta.env.BASE_URL}${obterFicheiroJogo()}`}
+              title="MathBridge Arcade Game"
+              className="w-full h-[680px] rounded-lg border border-slate-700 bg-[#0f172a]"
+            />
           </div>
         </div>
       )}
@@ -394,8 +435,6 @@ export default function App() {
             </div>
           </div>
         </div>
-
-        
       )}
 
     </div>
