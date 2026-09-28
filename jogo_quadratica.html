@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MathBridge - Função Quadrática</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0f172a; color: #f8fafc; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+    #game-container { position: relative; width: 380px; height: 600px; background: #1e293b; border-radius: 12px; border: 2px solid #334155; display: flex; flex-direction: column; align-items: center; overflow: hidden; }
+    header { width: 100%; padding: 12px; background: #0f172a; text-align: center; border-bottom: 1px solid #334155; }
+    h2 { font-size: 14px; color: #c084fc; text-transform: uppercase; letter-spacing: 1px; }
+    .hud { display: flex; justify-content: space-between; width: 100%; padding: 8px 16px; font-size: 12px; font-weight: bold; color: #94a3b8; }
+    #question-card { width: 90%; background: #0f172a; border: 1px solid #a855f7; border-radius: 8px; padding: 12px; text-align: center; margin-top: 10px; z-index: 10; }
+    .formula { font-family: monospace; font-size: 16px; color: #c084fc; margin-bottom: 8px; }
+    .input-box { display: flex; gap: 6px; justify-content: center; }
+    input { width: 100px; padding: 6px; border-radius: 6px; border: 1px solid #475569; background: #1e293b; color: white; text-align: center; font-size: 14px; outline: none; }
+    button { padding: 6px 12px; background: #a855f7; border: none; border-radius: 6px; color: white; font-weight: bold; cursor: pointer; font-size: 12px; }
+    button:hover { background: #9333ea; }
+    canvas { position: absolute; top: 0; left: 0; width: 380px; height: 600px; z-index: 1; }
+    #feedback { font-size: 12px; font-weight: bold; margin-top: 6px; height: 16px; }
+  </style>
+</head>
+<body>
+
+<div id="game-container">
+  <header>
+    <h2>Parabola Launcher (Quadrática)</h2>
+  </header>
+  
+  <div class="hud">
+    <span>XP: <strong id="xp-val" style="color:#a855f7;">0</strong></span>
+    <span>Fase: <strong id="fase-txt" style="color:#38bdf8;">1: Delta</strong></span>
+  </div>
+
+  <div id="question-card">
+    <div class="formula" id="eq-display">x² - 5x + 6 = 0</div>
+    <p id="instrucao" style="font-size: 11px; color: #94a3b8; margin-bottom: 8px;">Calcula o valor do Delta (Δ = b² - 4ac):</p>
+    <div class="input-box">
+      <input type="number" id="resposta-input" placeholder="Δ = ?" />
+      <button id="btn-validar">Ativar</button>
+    </div>
+    <div id="feedback"></div>
+  </div>
+
+  <canvas id="arcadeCanvas" width="380" height="600"></canvas>
+</div>
+
+<script>
+  const canvas = document.getElementById('arcadeCanvas');
+  const ctx = canvas.getContext('2d');
+
+  let xp = 0;
+  let fase = 1;
+  let questaoAtual = {};
+  let orbeCapturadoOuPerdido = false;
+
+  const perguntas = [
+    { a: 1, b: -5, c: 6, delta: 1, raizes: [2, 3] },
+    { a: 1, b: -4, c: 4, delta: 0, raizes: [2] },
+    { a: 1, b: -3, c: 2, delta: 1, raizes: [1, 2] }
+  ];
+
+  document.getElementById('resposta-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      document.getElementById('btn-validar').click();
+    }
+  });
+
+  function gerardesafio() {
+    questaoAtual = perguntas[Math.floor(Math.random() * perguntas.length)];
+    const sinalB = questaoAtual.b >= 0 ? `+ ${questaoAtual.b}` : `- ${Math.abs(questaoAtual.b)}`;
+    const sinalC = questaoAtual.c >= 0 ? `+ ${questaoAtual.c}` : `- ${Math.abs(questaoAtual.c)}`;
+    
+    document.getElementById('eq-display').innerText = `x² ${sinalB}x ${sinalC} = 0`;
+    document.getElementById('instrucao').innerText = "Calcula o valor do Delta (Δ = b² - 4ac):";
+    document.getElementById('resposta-input').value = '';
+    document.getElementById('resposta-input').disabled = false;
+    document.getElementById('btn-validar').style.display = 'inline-block';
+    document.getElementById('feedback').innerText = '';
+    fase = 1;
+    document.getElementById('fase-txt').innerText = "1: Delta";
+    orbeCapturadoOuPerdido = false;
+  }
+
+  let playerX = 170;
+  let orbes = [];
+  let teclas = {};
+
+  window.addEventListener('keydown', e => teclas[e.key] = true);
+  window.addEventListener('keyup', e => teclas[e.key] = false);
+
+  document.getElementById('btn-validar').addEventListener('click', () => {
+    const val = parseInt(document.getElementById('resposta-input').value);
+    if (val === questaoAtual.delta) {
+      document.getElementById('feedback').style.color = '#4ade80';
+      document.getElementById('feedback').innerText = "Δ Correto! Mova a nave e capture a Raiz!";
+      fase = 2;
+      document.getElementById('fase-txt').innerText = "2: Capturar Raiz";
+      document.getElementById('resposta-input').disabled = true;
+      document.getElementById('btn-validar').style.display = 'none';
+      
+      orbes = [
+        { x: 60, y: 180, valor: questaoAtual.raizes[0], correta: true },
+        { x: 200, y: 180, valor: questaoAtual.raizes[0] + 4, correta: false },
+        { x: 310, y: 180, valor: questaoAtual.raizes[0] - 2, correta: false }
+      ].sort(() => Math.random() - 0.5);
+    } else {
+      document.getElementById('feedback').style.color = '#f87171';
+      document.getElementById('feedback').innerText = "Delta incorreto. Tenta novamente!";
+    }
+  });
+
+  function loop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Desenhar fundo com grelha
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 1;
+    for(let i=0; i<canvas.width; i+=30) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,canvas.height); ctx.stroke(); }
+    for(let i=0; i<canvas.height; i+=30) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(canvas.width,i); ctx.stroke(); }
+
+    if (fase === 2) {
+      if (teclas['ArrowLeft'] && playerX > 20) playerX -= 5;
+      if (teclas['ArrowRight'] && playerX < 340) playerX += 5;
+
+      // Desenhar Nave
+      ctx.fillStyle = '#a855f7';
+      ctx.beginPath();
+      ctx.moveTo(playerX + 20, 520);
+      ctx.lineTo(playerX, 550);
+      ctx.lineTo(playerX + 40, 550);
+      ctx.fill();
+
+      // Desenhar Orbes
+      orbes.forEach(orbe => {
+        orbe.y += 0.8;
+        ctx.fillStyle = '#38bdf8';
+        ctx.beginPath();
+        ctx.arc(orbe.x, orbe.y, 20, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`x=${orbe.valor}`, orbe.x, orbe.y + 5);
+
+        // Colisão com a nave
+        if (orbe.y >= 500 && Math.abs(orbe.x - (playerX + 20)) < 30) {
+          if (!orbeCapturadoOuPerdido) {
+            orbeCapturadoOuPerdido = true;
+            if (orbe.correta) {
+              xp += 15;
+              document.getElementById('xp-val').innerText = xp;
+              alert("Boa! Raiz capturada com sucesso! (+15 XP)");
+            } else {
+              alert("Orbe errado! Tenta o próximo desafio.");
+            }
+            gerardesafio();
+          }
+        }
+
+        // Queda fora da tela
+        if (orbe.y > canvas.height + 20) {
+          if (!orbeCapturadoOuPerdido) {
+            orbeCapturadoOuPerdido = true;
+            alert("Os orbes caíram! Tenta o próximo desafio.");
+            gerardesafio();
+          }
+        }
+      });
+    }
+
+    requestAnimationFrame(loop);
+  }
+
+  gerardesafio();
+  loop();
+</script>
+</body>
+</html>
